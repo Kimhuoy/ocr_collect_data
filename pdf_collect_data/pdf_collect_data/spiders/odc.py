@@ -60,12 +60,7 @@ class OdcPdfSpider(scrapy.Spider):
 
         for data in response.css("li.dataset-item"):
             pdf_link = self.domain + data.xpath("div/h3/a/@href").get()
-
-            if pdf_link not in self.visited_urls:
-                yield scrapy.Request(pdf_link, callback=self.article_parse)
-
-            else:
-                self.logger.info(f"Already visitted URL: {pdf_link}")
+            yield scrapy.Request(pdf_link, callback=self.article_parse)
 
         next_page = response.css("ul.pagination a:contains('»')::attr(href)").get()
         if next_page:
