@@ -2,13 +2,9 @@
 
 import scrapy
 from scrapy.http import HtmlResponse
-from jsonl_format.jsonl_formatter import get_warc_headers
-
-from pdf_scrapper.data_parser import DataParser
-from utils.visited_url import get_visited_url, update_visited
 
 
-class OdcPdfSpider(scrapy.Spider, DataParser):
+class OdcPdfSpider(scrapy.Spider):
     """
     ODC PDF Spider
 
@@ -31,7 +27,6 @@ class OdcPdfSpider(scrapy.Spider, DataParser):
             Base URL of ODC website
         """
         super().__init__()
-        self.visited_urls = get_visited_url("visited_odc_pdf.txt")
         self.domain = "https://data.opendevelopmentcambodia.net"
 
     def start_requests(self):
@@ -89,27 +84,24 @@ class OdcPdfSpider(scrapy.Spider, DataParser):
         ------
         Dictionary of the content in URL.
         """
-        self.visited_urls.add(response.url)
-        update_visited("visited_odc_pdf.txt", response.url)
 
         additional_info = response.css(".additional-info > .table > tbody")
         additional_data = self.get_additional_info(additional_info)
+        title=response.css(".module-content > h1::text").get().strip()
+        category=response.css(".toolbar > ol > li ~ li > a::text").get().strip()
+        file_link=response.css(".resource-url-analytics::attr(href)").getall()
+        content=response.css(".notes > p::text").get()
 
-        pdf_metadata = self.to_file_metadata(
-            title=response.css(".module-content > h1::text").get().strip(),
-            category=response.css(".toolbar > ol > li ~ li > a::text").get().strip(),
-            file_link=response.css(".resource-url-analytics::attr(href)").getall(),
-            additional_info=additional_data
-        )
+    
 
-        article_data = self.to_json_item(
-            content=response.css(".notes > p::text").get(),
-            warc_headers=get_warc_headers(response.url),
-            metadata=None,  # got some error with fasttext, so we use None by default.
-            file_metadata=pdf_metadata
-        )
-
-        yield article_data
+        yield {
+            "title": title,
+            "category": category,
+            "pdf_links": file_link,
+            "content": content,
+            "additional_data": additional_data
+        }
+        
 
     @staticmethod
     def get_additional_info(addictional_info: HtmlResponse) -> dict:
